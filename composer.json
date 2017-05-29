@@ -1,0 +1,12 @@
+{
+  "name": "fk/helpers",
+  "description": "Common helpers for php",
+  "requires": {
+    "php": ">=7.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "fk\\helpers\\": "./src"
+    }
+  }
+}
