@@ -31,6 +31,9 @@ class DebugRequestCapture
         $this->request = array_filter($request, function ($v) {
             return !empty($v);
         });
+
+        $date = date('Y-m-d H:i:s');
+        file_put_contents($this->logFilename, "\n[$date] " . Helper::dump($this->request), FILE_APPEND);
     }
 
     protected function collectHeaders()
