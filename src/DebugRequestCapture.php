@@ -11,29 +11,73 @@ class DebugRequestCapture
 {
     public $logFilename;
 
-    public $request = [];
+    /**
+     * Whether application is in debug mode
+     * Capture only works when `debug=true`
+     */
+    public $debug;
 
-    public function __construct($logFilename)
+    public function __construct($logFilename, $debug = true)
     {
         $this->logFilename = $logFilename;
+
+        $this->debug = $debug;
     }
 
-    public function capture()
+    public function capture(callable $callback)
     {
-        $request = [
-            'Get: ' => $_GET,
-            'Post: ' => $_POST,
-            'Headers: ' => $this->collectHeaders(),
-            'Files: ' => $_FILES,
-        ];
+        if ($this->debug) {
+            $this->write(null, null);
+            $request = [
+                'Get: ' => $_GET,
+                'Post: ' => $_POST,
+                'Headers: ' => $this->collectHeaders(),
+                'Files: ' => $_FILES,
+            ];
 
+            $request = array_filter($request, function ($v) {
+                return !empty($v);
+            });
 
-        $this->request = array_filter($request, function ($v) {
-            return !empty($v);
-        });
+            $this->write('Request', $request);
+        }
 
+        if ($this->debug) {
+            ob_start();
+        }
+
+        $content = call_user_func($callback);
+
+        if ($this->debug) {
+            $content = ob_get_clean() . $content;
+        }
+
+        if ($this->debug && $content !== null) {
+            $this->write('Response', $content);
+        }
+    }
+
+    protected function write($title, $data)
+    {
         $date = date('Y-m-d H:i:s');
-        file_put_contents($this->logFilename, "\n[$date] " . Helper::dump($this->request), FILE_APPEND);
+        if ($title === null) {
+            $ip = $_SERVER['HTTP_X_REAL_IP'] ?? ($_SERVER['REMOTE_ADDR'] ?? 'Unknown');
+            $log = <<<DEL
+
+ -----------------------------------------------------------
+|
+|   Welcome, 
+|   Date: $date
+|   IP  : $ip
+|
+ -----------------------------------------------------------
+
+
+DEL;
+        } else {
+            $log = "\n[$date] $title\n" . Helper::dump($data) . "\n";
+        }
+        file_put_contents($this->logFilename, $log, FILE_APPEND);
     }
 
     protected function collectHeaders()
@@ -46,6 +90,6 @@ class DebugRequestCapture
                 $headers[$k] = $v;
             }
         }
-        return $header;
+        return $headers;
     }
 }
