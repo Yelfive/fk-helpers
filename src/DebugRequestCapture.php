@@ -9,25 +9,79 @@ namespace fk\helpers;
 
 class DebugRequestCapture
 {
-    public $logFilename;
+    protected $logFilename;
+
+    protected $startWith;
 
     /**
      * Whether application is in debug mode
      * Capture only works when `debug=true`
      */
-    public $debug;
+    protected $debug;
 
-    public function __construct($logFilename, $debug = true)
+    /**
+     * @var static
+     */
+    protected static $instance;
+
+    public function __construct(string $logFilename, bool $debug = true, array $startFields = [])
     {
         $this->logFilename = $logFilename;
 
         $this->debug = $debug;
+
+        static::$instance = $this;
+
+        $this->startWith = $this->getStartWith($startFields);
+    }
+
+    protected function getStartWith(array $fields): string
+    {
+        $date = date('Y-m-d H:i:s');
+        $ip = $_SERVER['HTTP_X_REAL_IP'] ?? ($_SERVER['REMOTE_ADDR'] ?? 'Unknown');
+        $log = <<<DEL
+
+
+
+ -----------------------------------------------------------
+|
+|   Welcome
+|   Date    : $date
+|   Client  : $ip
+|   Method  : {$_SERVER['REQUEST_METHOD']}
+
+DEL;
+        if (is_array($fields) && $fields) {
+            $log .= <<<LOG
+|
+|===========================================================
+|   <OTHERS>
+|===========================================================
+|
+
+LOG;
+        }
+        foreach ($fields as $k => $v) {
+            if (!is_scalar($k) || !is_scalar($v)) continue;
+            $log .= <<<LOG
+|   $k  : $v
+
+LOG;
+        }
+        $log .= <<<DEL
+|
+ -----------------------------------------------------------
+
+
+DEL;
+        return $log;
     }
 
     public function capture(callable $callback)
     {
         if ($this->debug) {
-            $this->write(null, null);
+            $this->sizeControl();
+            $this->writeStart();
             $request = [
                 'Get: ' => $_GET,
                 'Post: ' => $_POST,
@@ -57,26 +111,27 @@ class DebugRequestCapture
         }
     }
 
+    /**
+     * Add capture log
+     * @param string $title
+     * @param mixed $data
+     */
+    public static function add(string $title, $data)
+    {
+        if (!static::$instance) return;
+
+        static::$instance->write($title, $data);
+    }
+
+    protected function writeStart()
+    {
+        file_put_contents($this->logFilename, $this->startWith, FILE_APPEND);
+    }
+
     protected function write($title, $data)
     {
         $date = date('Y-m-d H:i:s');
-        if ($title === null) {
-            $ip = $_SERVER['HTTP_X_REAL_IP'] ?? ($_SERVER['REMOTE_ADDR'] ?? 'Unknown');
-            $log = <<<DEL
-
- -----------------------------------------------------------
-|
-|   Welcome, 
-|   Date: $date
-|   IP  : $ip
-|
- -----------------------------------------------------------
-
-
-DEL;
-        } else {
-            $log = "\n[$date] $title\n" . Helper::dump($data) . "\n";
-        }
+        $log = "\n[$date] $title\n" . Helper::dump($data) . "\n";
         file_put_contents($this->logFilename, $log, FILE_APPEND);
     }
 
@@ -91,5 +146,19 @@ DEL;
             }
         }
         return $headers;
+    }
+
+    protected function sizeControl()
+    {
+        if (!is_file($this->logFilename) || filesize($this->logFilename) < 1024 * 1024 * 5) return;
+
+        $index = 1;
+        while (file_exists("$this->logFilename.$index")) {
+            $index++;
+        }
+        $newFilename = $this->logFilename . '.' . $index;
+
+        rename($this->logFilename, $newFilename);
+        file_put_contents($this->logFilename, '');
     }
 }
