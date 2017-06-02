@@ -7,7 +7,7 @@
 
 namespace fk\helpers;
 
-class Helper
+class Dumper
 {
 
     public static function isIndexedArray($array)

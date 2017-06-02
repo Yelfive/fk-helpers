@@ -7,6 +7,11 @@
 
 namespace fk\helpers;
 
+/**
+ * Class DebugRequestCapture
+ * @package fk\helpers
+ * @method static null add(string $title, mixed $data)
+ */
 class DebugRequestCapture
 {
     protected $logFilename;
@@ -24,15 +29,31 @@ class DebugRequestCapture
      */
     protected static $instance;
 
+    /**
+     * @var resource
+     */
+    protected static $fileHandler;
+
+    // TODO: time desc
+    // TODO: custom GET POST PUT SESSION FILES with closure
     public function __construct(string $logFilename, bool $debug = true, array $startFields = [])
     {
-        $this->logFilename = $logFilename;
-
         $this->debug = $debug;
+
+        if (!$debug) return;
+
+        $this->logFilename = $logFilename;
 
         static::$instance = $this;
 
         $this->startWith = $this->getStartWith($startFields);
+
+        $this->initFileHandler();
+    }
+
+    protected function initFileHandler()
+    {
+        static::$fileHandler = fopen($this->logFilename, 'w');
     }
 
     protected function getStartWith(array $fields): string
@@ -77,37 +98,46 @@ DEL;
         return $log;
     }
 
+    protected function call(callable $callback)
+    {
+        return call_user_func($callback);
+    }
+
     public function capture(callable $callback)
     {
-        if ($this->debug) {
-            $this->sizeControl();
-            $this->writeStart();
-            $request = [
-                'Get: ' => $_GET,
-                'Post: ' => $_POST,
-                'Headers: ' => $this->collectHeaders(),
-                'Files: ' => $_FILES,
-            ];
+        if (!$this->debug) return $this->call($callback);
+        $this->sizeControl();
+        $this->writeStart();
+        $request = [
+            'Get: ' => $_GET,
+            'Post: ' => $_POST,
+            'Headers: ' => $this->collectHeaders(),
+            'Files: ' => $_FILES,
+        ];
 
-            $request = array_filter($request, function ($v) {
-                return !empty($v);
-            });
+        $request = array_filter($request, function ($v) {
+            return !empty($v);
+        });
 
-            $this->write('Request', $request);
-        }
+        $this->write('Request', $request);
 
-        if ($this->debug) {
-            ob_start();
-        }
 
-        $content = call_user_func($callback);
+        $content = $this->call($callback);
 
-        if ($this->debug) {
-            $content = ob_get_clean() . $content;
-        }
-
-        if ($this->debug && $content !== null) {
+        if ($content !== null) {
             $this->write('Response', $content);
+        }
+        return true;
+    }
+
+    public static function __callStatic($name, $arguments)
+    {
+        if (!static::$instance || !static::$instance->debug) return;
+        $method = "_$name";
+        if (method_exists(static::$instance, $method)) {
+            static::$instance->$method(...$arguments);
+        } else {
+            throw new \Exception('Call to undefined method' . __CLASS__ . "::$name");
         }
     }
 
@@ -116,7 +146,7 @@ DEL;
      * @param string $title
      * @param mixed $data
      */
-    public static function add(string $title, $data)
+    protected function _add(string $title, $data)
     {
         if (!static::$instance) return;
 
@@ -131,7 +161,7 @@ DEL;
     protected function write($title, $data)
     {
         $date = date('Y-m-d H:i:s');
-        $log = "\n[$date] $title\n" . Helper::dump($data) . "\n";
+        $log = "\n[$date] $title\n" . Dumper::dump($data) . "\n";
         file_put_contents($this->logFilename, $log, FILE_APPEND);
     }
 
