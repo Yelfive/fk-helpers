@@ -12,6 +12,7 @@ namespace fk\helpers\debug;
  * @package fk\helpers
  *
  * @method static $this add(array $data)
+ * @method static $this softAdd(array $data)
  *
  * @method $this header(array|callable $headers)
  * @method $this query(array|callable $queryParams)
@@ -48,6 +49,11 @@ class Capture
      */
     protected $request = [];
 
+    /**
+     * @var array
+     */
+    protected $soft = [];
+
     protected $logVars = ['header', 'query', 'form', 'session', 'file'];
 
     public function __construct(WriterInterface $writer, bool $debug = true)
@@ -70,8 +76,9 @@ class Capture
             $value = $arguments[0];
             $this->request[$name] = is_callable($value) ? $this->call($value) : $value;
             return $this;
-        } else if ($name === 'add') {
-            $this->_add($arguments[0]);
+        } else if (method_exists($this, "_$name")) {
+            $method = "_$name";
+            $this->$method($arguments[0]);
             return $this;
         }
         throw new \Exception("Calling undefined method $name of " . __CLASS__);
@@ -79,7 +86,7 @@ class Capture
 
     public static function __callStatic($name, $arguments)
     {
-        if (!static::$instance || !static::$instance->debug) return;
+        if (!static::$instance || !static::$instance->debug) return null;
         $method = "_$name";
         if (method_exists(static::$instance, $method)) {
             static::$instance->$method(...$arguments);
@@ -157,8 +164,17 @@ class Capture
         static::$instance->write($data);
     }
 
+    protected function _softAdd(array $data)
+    {
+        $this->soft = array_merge($this->soft, $data);
+    }
+
     protected function write($data)
     {
+        if (!$this->debug || !$this->writer) return null;
+
+        $data = array_merge($this->soft, $data);
+        $this->soft = [];
         $this->writer->write($data);
     }
 }
