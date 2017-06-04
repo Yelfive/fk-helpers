@@ -7,25 +7,20 @@
 
 namespace fk\helpers\debug;
 
-use fk\helpers\Dumper;
-
 /**
  * Class DebugRequestCapture
  * @package fk\helpers
- * @method static null add(string $title, mixed $data)
  *
- * @method $this header(array $headers)
- * @method $this query(array $queryParams)
- * @method $this form(array $formData)
- * @method $this session(array $session)
- * @method $this file(array $files)
- * @method $this cookie(array $cookies)
+ * @method static $this add(array $data)
+ *
+ * @method $this header(array|callable $headers)
+ * @method $this query(array|callable $queryParams)
+ * @method $this form(array|callable $formData)
+ * @method $this session(array|callable $session)
+ * @method $this file(array|callable $files)
  */
 class Capture
 {
-
-    const TITLE_REQUEST = 'Request';
-    const TITLE_RESPONSE = 'Response';
 
     /**
      * @var string
@@ -53,15 +48,15 @@ class Capture
      */
     protected $request = [];
 
-    protected $logVars = ['header', 'query', 'form', 'session', 'file', 'cookie'];
+    protected $logVars = ['header', 'query', 'form', 'session', 'file'];
 
-    public function __construct($writer, bool $debug = true, array $startFields = [])
+    public function __construct(WriterInterface $writer, bool $debug = true)
     {
         if (!$debug) return;
 
         $this->debug = $debug;
         static::$instance = $this;
-        $this->writer = $writer instanceof WriterInterface ? $writer : new $writer;
+        $this->writer = $writer;
     }
 
     public function overwriteRequest($request)
@@ -75,30 +70,31 @@ class Capture
             $value = $arguments[0];
             $this->request[$name] = is_callable($value) ? $this->call($value) : $value;
             return $this;
+        } else if ($name === 'add') {
+            $this->_add($arguments[0]);
+            return $this;
         }
         throw new \Exception("Calling undefined method $name of " . __CLASS__);
     }
 
-    protected function call(callable $callback)
+    public static function __callStatic($name, $arguments)
     {
-        return call_user_func($callback);
+        if (!static::$instance || !static::$instance->debug) return;
+        $method = "_$name";
+        if (method_exists(static::$instance, $method)) {
+            static::$instance->$method(...$arguments);
+            return static::$instance;
+        } else {
+            throw new \Exception('Call to undefined method' . __CLASS__ . "::$name");
+        }
     }
 
-    public function capture(callable $callback)
+    protected function call($callback)
     {
-        if (!$this->debug) return $this->call($callback);
-
-        $this->start();
-
-        $this->captureRequest();
-
-        if (null !== $content = $this->call($callback)) $this->write(self::TITLE_RESPONSE, $content);
-
-        $this->end();
-        return true;
+        return is_callable($callback) ? call_user_func($callback) : $callback;
     }
 
-    protected function captureRequest()
+    public function capture()
     {
         foreach ($this->logVars as $var) {
             if (!isset($this->request[$var])) {
@@ -116,7 +112,7 @@ class Capture
             return !empty($v);
         });
 
-        $this->write(self::TITLE_REQUEST, $request);
+        $this->write($request);
     }
 
     protected function prepareHeader()
@@ -142,9 +138,9 @@ class Capture
         return $_POST;
     }
 
-    protected function prepareCookie()
+    protected function prepareFile()
     {
-        return $_COOKIE ?? [];
+        return $_FILES;
     }
 
     protected function prepareSession()
@@ -152,42 +148,18 @@ class Capture
         return $_SESSION ?? [];
     }
 
-    protected function end()
-    {
-        $this->writer->end();
-    }
-
-    public static function __callStatic($name, $arguments)
-    {
-        if (!static::$instance || !static::$instance->debug) return;
-        $method = "_$name";
-        if (method_exists(static::$instance, $method)) {
-            static::$instance->$method(...$arguments);
-        } else {
-            throw new \Exception('Call to undefined method' . __CLASS__ . "::$name");
-        }
-    }
-
     /**
      * Add capture log
-     * @param string $title
      * @param mixed $data
      */
-    protected function _add(string $title, $data)
+    protected function _add(array $data)
     {
-        if (!static::$instance) return;
-
-        static::$instance->write($title, $data);
+        static::$instance->write($data);
     }
 
-    protected function start()
+    protected function write($data)
     {
-        $this->writer->start();
-    }
-
-    protected function write($title, $data)
-    {
-        $this->writer->write([$title, $data]);
+        $this->writer->write($data);
     }
 }
 

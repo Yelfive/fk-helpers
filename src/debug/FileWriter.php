@@ -34,8 +34,12 @@ class FileWriter implements WriterInterface
     {
         $this->filename = $filename;
         $this->sizeControl();
-        $this->handler = fopen($this->filename, 'a');
         $this->startFields = $startFields;
+
+        $this->start();
+        register_shutdown_function(function () {
+            $this->fwrite("\n\n\n");
+        });
     }
 
     protected function sizeControl()
@@ -54,21 +58,28 @@ class FileWriter implements WriterInterface
 
     public function write(array $something)
     {
-        list ($title, $data) = $something;
         $date = date('H:i:s');
-        $log = "\n[$date] $title\n" . Dumper::dump($data) . "\n";
+        $log = '';
+        foreach ($something as $title => $data) {
+            $title = str_replace('_', ' ', ucwords($title, '_'));
+            $log .= "\n[$date] $title\n" . Dumper::dump($data) . "\n";
+        }
         $this->fwrite($log);
     }
 
-    public function end()
+    protected function handler()
     {
-        $this->fwrite("\n\n\n");
-        fclose($this->handler);
+        if (!$this->handler) {
+            $this->handler = fopen($this->filename, 'a');
+        }
+        return $this->handler;
     }
 
     protected function fwrite(string $string)
     {
-        fwrite($this->handler, $string);
+        fwrite($this->handler(), $string);
+        fclose($this->handler());
+        $this->handler = null;
     }
 
     public function start()
