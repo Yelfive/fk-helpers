@@ -41,6 +41,7 @@ abstract class DBWriter implements WriterInterface
             print_r($pdo->errorInfo());
             die;
         }
+        $pdo->exec('SET NAMES utf8mb4');
         $stmt = $pdo->prepare($sql);
         if (false === $stmt) {
             $this->error($pdo);
