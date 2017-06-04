@@ -23,6 +23,10 @@ use fk\helpers\Dumper;
  */
 class Capture
 {
+
+    const TITLE_REQUEST = 'Request';
+    const TITLE_RESPONSE = 'Response';
+
     /**
      * @var string
      */
@@ -51,7 +55,6 @@ class Capture
 
     protected $logVars = ['header', 'query', 'form', 'session', 'file', 'cookie'];
 
-    // TODO: custom GET POST PUT SESSION FILES with closure
     public function __construct($writer, bool $debug = true, array $startFields = [])
     {
         if (!$debug) return;
@@ -59,7 +62,6 @@ class Capture
         $this->debug = $debug;
         static::$instance = $this;
         $this->writer = $writer instanceof WriterInterface ? $writer : new $writer;
-        $this->startWith = $this->getStartWith($startFields);
     }
 
     public function overwriteRequest($request)
@@ -77,44 +79,6 @@ class Capture
         throw new \Exception("Calling undefined method $name of " . __CLASS__);
     }
 
-    protected function getStartWith(array $fields): string
-    {
-        $date = date('Y-m-d H:i:s');
-        $ip = $_SERVER['HTTP_X_REAL_IP'] ?? ($_SERVER['REMOTE_ADDR'] ?? 'Unknown');
-        $log = <<<DEL
- -----------------------------------------------------------
-|
-|   Welcome
-|   Date    : $date
-|   Client  : $ip
-|   Method  : {$_SERVER['REQUEST_METHOD']}
-
-DEL;
-        if (is_array($fields) && $fields) {
-            $log .= <<<LOG
-|
-|===========================================================
-|   <OTHERS>
-|===========================================================
-|
-
-LOG;
-        }
-        foreach ($fields as $k => $v) {
-            if (!is_scalar($k) || !is_scalar($v)) continue;
-            $log .= <<<LOG
-|   $k  : $v
-
-LOG;
-        }
-        $log .= <<<DEL
-|
- -----------------------------------------------------------
-
-DEL;
-        return $log;
-    }
-
     protected function call(callable $callback)
     {
         return call_user_func($callback);
@@ -128,7 +92,7 @@ DEL;
 
         $this->captureRequest();
 
-        if (null !== $content = $this->call($callback)) $this->write('Response', $content);
+        if (null !== $content = $this->call($callback)) $this->write(self::TITLE_RESPONSE, $content);
 
         $this->end();
         return true;
@@ -152,7 +116,7 @@ DEL;
             return !empty($v);
         });
 
-        $this->write('Request', $request);
+        $this->write(self::TITLE_REQUEST, $request);
     }
 
     protected function prepareHeader()
@@ -190,9 +154,7 @@ DEL;
 
     protected function end()
     {
-        if (method_exists($this->writer, 'close')) {
-            $this->writer->close();
-        }
+        $this->writer->end();
     }
 
     public static function __callStatic($name, $arguments)
@@ -220,13 +182,12 @@ DEL;
 
     protected function start()
     {
-        $this->writer->write($this->startWith);
+        $this->writer->start();
     }
 
     protected function write($title, $data)
     {
-        $date = date('H:i:s');
-        $log = "\n[$date] $title\n" . Dumper::dump($data) . "\n";
-        $this->writer->write($log);
+        $this->writer->write([$title, $data]);
     }
 }
+

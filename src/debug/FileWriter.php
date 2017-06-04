@@ -7,9 +7,14 @@
 
 namespace fk\helpers\debug;
 
+use fk\helpers\Dumper;
+
 class FileWriter implements WriterInterface
 {
 
+    /**
+     * @var resource
+     */
     protected $handler;
 
     protected $filename;
@@ -20,11 +25,17 @@ class FileWriter implements WriterInterface
 
     protected $offset = 0;
 
-    public function __construct($filename)
+    /**
+     * @var array
+     */
+    protected $startFields;
+
+    public function __construct($filename, $startFields = [])
     {
         $this->filename = $filename;
         $this->sizeControl();
         $this->handler = fopen($this->filename, 'a');
+        $this->startFields = $startFields;
     }
 
     protected function sizeControl()
@@ -41,15 +52,65 @@ class FileWriter implements WriterInterface
         file_put_contents($this->filename, '');
     }
 
-    public function write($something)
+    public function write(array $something)
     {
-        fwrite($this->handler, $something);
+        list ($title, $data) = $something;
+        $date = date('H:i:s');
+        $log = "\n[$date] $title\n" . Dumper::dump($data) . "\n";
+        $this->fwrite($log);
     }
 
-    public function close()
+    public function end()
     {
-        fwrite($this->handler, "\n\n\n");
+        $this->fwrite("\n\n\n");
         fclose($this->handler);
     }
 
+    protected function fwrite(string $string)
+    {
+        fwrite($this->handler, $string);
+    }
+
+    public function start()
+    {
+        $this->fwrite($this->getStartWith($this->startFields));
+    }
+
+    protected function getStartWith(array $fields): string
+    {
+        $date = date('Y-m-d H:i:s');
+        $ip = $_SERVER['HTTP_X_REAL_IP'] ?? ($_SERVER['REMOTE_ADDR'] ?? 'Unknown');
+        $log = <<<DEL
+ -----------------------------------------------------------
+|
+|   Welcome
+|   Date    : $date
+|   Client  : $ip
+|   Method  : {$_SERVER['REQUEST_METHOD']}
+
+DEL;
+        if (is_array($fields) && $fields) {
+            $log .= <<<LOG
+|
+|===========================================================
+|   <OTHERS>
+|===========================================================
+|
+
+LOG;
+        }
+        foreach ($fields as $k => $v) {
+            if (!is_scalar($k)) continue;
+            $log .= <<<LOG
+|   $k  : $v
+
+LOG;
+        }
+        $log .= <<<DEL
+|
+ -----------------------------------------------------------
+
+DEL;
+        return $log;
+    }
 }
