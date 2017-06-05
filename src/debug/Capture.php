@@ -128,7 +128,7 @@ class Capture
         foreach ($_SERVER as $k => $v) {
             if (strncmp($k, 'HTTP_', 5) === 0) {
                 $k = substr(strtolower($k), 5);
-                $k = str_replace('_', '', ucwords($k, '_'));
+                $k = str_replace('_', '-', ucwords($k, '_'));
                 $headers[$k] = $v;
             }
         }
