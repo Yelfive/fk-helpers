@@ -17,7 +17,7 @@ class FileWriter implements WriterInterface
      */
     protected $handler;
 
-    protected $filename;
+    public $filename;
 
     protected $allowedLogSize = 1024 * 1024 * 5;
 
