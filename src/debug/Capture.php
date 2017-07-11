@@ -14,11 +14,11 @@ namespace fk\helpers\debug;
  * @method static $this add(array $data)
  * @method static $this softAdd(array $data)
  *
- * @method $this header(array|callable $headers)
- * @method $this query(array|callable $queryParams)
- * @method $this form(array|callable $formData)
- * @method $this session(array|callable $session)
- * @method $this file(array|callable $files)
+ * @method $this header(array | callable $headers)
+ * @method $this query(array | callable $queryParams)
+ * @method $this form(array | callable $formData)
+ * @method $this session(array | callable $session)
+ * @method $this file(array | callable $files)
  */
 class Capture
 {
@@ -72,8 +72,6 @@ class Capture
 
     public function __call($name, $arguments)
     {
-        if (!static::$instance || !static::$instance->debug) return null;
-
         if (in_array($name, $this->logVars)) {
             $value = $arguments[0];
             $this->request[$name] = is_callable($value) ? $this->call($value) : $value;
@@ -86,16 +84,17 @@ class Capture
         throw new \Exception("Calling undefined method $name of " . __CLASS__);
     }
 
+    /**
+     * Allow static call for methods inside this class
+     * @param string $name
+     * @param array $arguments
+     * @return $this|null
+     */
     public static function __callStatic($name, $arguments)
     {
         if (!static::$instance || !static::$instance->debug) return null;
         $method = "_$name";
-        if (method_exists(static::$instance, $method)) {
-            static::$instance->$method(...$arguments);
-            return static::$instance;
-        } else {
-            throw new \Exception('Call to undefined method' . __CLASS__ . "::$name");
-        }
+        return static::$instance->__call($method, $arguments);
     }
 
     protected function call($callback)
@@ -163,7 +162,7 @@ class Capture
      */
     protected function _add(array $data)
     {
-        static::$instance->write($data);
+        $this->write($data);
     }
 
     protected function _softAdd(array $data)
