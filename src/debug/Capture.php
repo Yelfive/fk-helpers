@@ -72,6 +72,8 @@ class Capture
 
     public function __call($name, $arguments)
     {
+        if (!static::$instance || !static::$instance->debug) return null;
+
         if (in_array($name, $this->logVars)) {
             $value = $arguments[0];
             $this->request[$name] = is_callable($value) ? $this->call($value) : $value;
