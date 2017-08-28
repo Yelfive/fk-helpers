@@ -32,7 +32,7 @@ abstract class DBWriter implements WriterInterface
     /**
      * @param string $sql
      * @param array $bindings
-     * @return \PDOStatement
+     * @return int|null
      */
     protected function execute(string $sql, array $bindings = [])
     {
