@@ -23,12 +23,15 @@ class Json
     protected static function mergeTwo(array $first, array $second): array
     {
         $merged = $first;
+        $indexed = static::isIndex($first) && static::isIndex($second);
         foreach ($second as $k => $v) {
             if (is_array($v)) {
                 $origin = $merged[$k] ?? [];
                 if (!is_array($origin)) $origin = [];
 
                 $merged[$k] = static::mergeTwo($origin, $v);
+            } else if ($indexed) {
+                $merged[] = $v;
             } else {
                 $merged[$k] = $v;
             }
