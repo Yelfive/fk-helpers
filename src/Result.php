@@ -10,9 +10,9 @@ namespace fk\helpers;
 use fk\http\StatusCode;
 
 /**
- * @method array getRules()
- * @method $this rules(array $rules)
- * @method $this debug(bool $debug = true)
+ * @method array getRules() Return current rules
+ * @method $this rules(array $rules) Set rules to overwrite default validation
+ * @method $this debug(bool $debug = true) Set if in debug mode, which will do some performance consuming validation
  */
 class ResultConfig
 {
@@ -35,6 +35,10 @@ class ResultConfig
     protected function _debug(bool $debug = true)
     {
         $this->debug = $debug;
+        if ($this->debug = $debug) {
+            $this->rules['list'] = ['array'];
+            $this->rules['data'] = ['array'];
+        }
     }
 
     protected function _rules(array $rules)
@@ -65,16 +69,16 @@ class ResultConfig
 class Result
 {
 
-    use BuildTrait;
-
-    protected static $instance;
+    use SingletonTrait;
 
     /**
      * @var Validator
      */
     protected static $validator;
 
-    protected $response = ['code' => StatusCode::SUCCESS_OK, 'extend' => []];
+    protected $defaultResponse = ['code' => StatusCode::SUCCESS_OK, 'extend' => []];
+
+    protected $response;
 
     /**
      * @var ResultConfig
@@ -85,6 +89,7 @@ class Result
     {
         $this->config = new ResultConfig();
         if (!static::$validator) static::$validator = new Validator($this->config->getRules());
+        $this->clear();
     }
 
     public function configBag()
@@ -113,15 +118,19 @@ class Result
 
     /**
      * Add data to response, with its `$name` as key
-     * @param string|array $name
+     * @param string|array|null $name
+     * * string - `$value` must not be null <br>
+     * * array  - `$value` will be ignored <br>
+     * * null   -  It will be taken as retrieving<br>
+     *
      * @param mixed $value
      * @return $this
      * @throws Exception
      */
-    public function extend($name, $value = null)
+    public function extend($name = null, $value = null)
     {
         if (is_array($name)) {
-            foreach ($name as $k => $v) $this->response['extend'][$k] = $v;
+            $this->merge($this->response['extend'], $name);
         } else {
             $this->response['extend'][$name] = $value;
         }
@@ -143,12 +152,16 @@ class Result
 
     /**
      * Unset key `$name` from response
-     * @param string $name
+     * @param string|null $name
      * @return $this
      */
-    public function clear(string $name)
+    public function clear(string $name = null)
     {
-        unset($this->response[$name]);
+        if ($name === null) {
+            $this->response = $this->defaultResponse;
+        } else {
+            unset($this->response[$name]);
+        }
         return $this;
     }
 
@@ -172,7 +185,7 @@ class Result
     protected function exception(string $error)
     {
         $traces = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-        $caller = $traces[1] ?? [];
+        $caller = $traces[2] ?? [];
         $message = "Invalid response with error: $error\n";
         if ($caller) $message .= $this->bolder("Check this out\n") . "#0 " . $this->red($caller['file']) . " on line " . $this->red($caller['line']);
         throw new Exception($message);
@@ -196,6 +209,11 @@ class Result
         }
     }
 
+    public function hasResponse()
+    {
+        return isset($this->response['message']);
+    }
+
     public function toArray(): array
     {
         $response = $this->response;
@@ -203,11 +221,18 @@ class Result
         $extend = $response['extend'];
         unset($response['extend']);
 
-        $data = $response + $extend;
+        $this->merge($response, $extend);
 
-        if (isset($data['data']) && is_array($data['data']) && empty($data['data'])) $data['data'] = new \stdClass();
+        if (isset($response['data']) && is_array($response['data']) && empty($response['data'])) $response['data'] = new \stdClass();
 
-        return $data;
+        $this->validate(['message' => $response['message'] ?? null]);
+
+        return $response;
+    }
+
+    protected function merge(array &$dst, array $source)
+    {
+        foreach ($source as $k => $v) $dst[$k] = $v;
     }
 
     public function toJson(): string
