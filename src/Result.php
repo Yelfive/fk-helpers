@@ -92,7 +92,7 @@ class Result
         $this->clear();
     }
 
-    public function configBag()
+    public function propertyBag()
     {
         return $this->config;
     }
