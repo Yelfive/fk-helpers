@@ -9,6 +9,17 @@ namespace fk\helpers\privilege;
 
 class AclManager
 {
+
+    public const METHOD_GET = 0B1;
+    public const METHOD_POST = 0B10;
+    public const METHOD_PUT = 0B100;
+    public const METHOD_DELETE = 0B1000;
+    public const METHOD_PATCH = 0B10000;
+    public const METHOD_LOCK = 0B100000;
+    public const METHOD_UNLOCK = 0B1000000;
+    public const METHOD_LINK = 0B10000000;
+    public const METHOD_UNLINK = 0B10000000;
+
     protected $menus;
 
     public function __construct(array $menus)
@@ -79,5 +90,24 @@ class AclManager
             }
         }
         return false;
+    }
+
+    /**
+     * Translate privileges like
+     * ```
+     * user,url1,url2,url3...
+     * ```
+     * into
+     *
+     * ```
+     * user:GET|POST,api1:method,api2:method...
+     * ```
+     *
+     * @see self::METHOD_* for more
+     *
+     * @param $privileges
+     */
+    public function translateIntoAPIs($privileges)
+    {
     }
 }
