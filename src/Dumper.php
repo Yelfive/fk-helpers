@@ -51,6 +51,8 @@ class Dumper
 
             $chars = $inline ? ', ' : ',';
             return '[' . ltrim($string, $chars) . ($inline ? '' : ',') . substr($space, 0, -4) . ']';
+        } else if (is_object($input)) {
+            return '<object ' . get_class($input) . '>';
         }
         throw new \Exception('Cannot dump such data type: ' . var_export($input, true));
     }
