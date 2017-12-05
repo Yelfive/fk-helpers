@@ -18,9 +18,16 @@ class AclManager
     public const METHOD_LOCK = 0B100000;
     public const METHOD_UNLOCK = 0B1000000;
     public const METHOD_LINK = 0B10000000;
-    public const METHOD_UNLINK = 0B10000000;
+    public const METHOD_UNLINK = 0B100000000;
+    public const METHOD_ALL = -1;
+
+    public $delimiter = ',';
 
     protected $menus;
+
+    protected const THROUGH_WITH_KEY = 0B1;
+    protected const THROUGH_WITH_VALUE = 0B10;
+
 
     public function __construct(array $menus)
     {
@@ -28,18 +35,17 @@ class AclManager
     }
 
     /**
-     * Menus accessible according given `privileges`
-     * @param string|array $privileges
-     * @param null|string $delimiter
+     * Menus accessible according given `urls` of frontend
+     * @param string|array $urls
      * @return array
      */
-    public function accessibleMenus($privileges, $delimiter = null)
+    public function accessibleMenus($urls)
     {
-        if (is_string($privileges)) $privileges = $delimiter ? explode($delimiter, $privileges) : [$privileges];
+        if (is_string($urls)) $urls = explode($this->delimiter, $urls);
 
         $menus = $this->menus;
 
-        return $this->_accessibleReduce($menus, $privileges);
+        return $this->_accessibleReduce($menus, $urls);
     }
 
     private function _accessibleReduce(array &$menus, array $privileges)
@@ -61,53 +67,115 @@ class AclManager
 
     /**
      * Check if given privileges are all listed in `menus`
-     * @param array|string $privileges
+     * @param array|string $urls
      *  1. `array` Privilege array <br>
      *  2. `string` One privilege <br>
      *  3. `$delimiter separated string` array of privileges joined by $delimiter, an explode will be used
-     * @param null|string $delimiter Used to explode `$privilege` when it's a string
-     * @return array|true True for all listed, and array for leftovers
+     * @param array $invalid The leftovers
+     * @return bool Whether all URLs exist
      */
-    public function exits($privileges, $delimiter = null)
+    public function exists($urls, &$invalid = [])
     {
-        if (is_string($privileges)) $privileges = $delimiter ? explode($delimiter, $privileges) : [$privileges];
+        if (is_string($urls)) $urls = explode($this->delimiter, $urls);
 
-        $this->_existsReduce($this->menus, $privileges);
+        $urls = $this->unique($urls);
 
-        return $privileges ?: true;
+        $this->goThrough(function ($item) use (&$urls) {
+            if (false !== $key = array_search($item['url'], $urls)) {
+                unset($urls[$key]);
+            }
+        });
+
+        return [] === $invalid = $urls;
     }
 
-    private function _existsReduce($menus, &$privileges)
+    public function unique($urls)
     {
-        foreach ($menus as $item) {
-            if (isset($item['url']) && false !== $key = array_search($item['url'], $privileges, true)) {
-                unset($privileges[$key]);
-                if (empty($privileges)) return true;
-            }
+        $isString = is_string($urls);
 
-            if (!empty($item['children']) && $this->_existsReduce($item['children'], $privileges) === true) {
-                return true;
-            }
-        }
-        return false;
+        $urls = $isString ? explode($this->delimiter, $urls) : $urls;
+
+        array_walk($urls, function (&$v) {
+            $v = trim($v);
+        });
+        $urls = array_filter(array_unique($urls));
+
+        return $isString ? implode($this->delimiter, $urls) : $urls;
     }
 
     /**
-     * Translate privileges like
-     * ```
-     * user,url1,url2,url3...
-     * ```
-     * into
+     * Translate `$urls` into API `privileges` with format
+     *
+     * **Example**
+     *
+     * [apis => ['session' => 1|2]]
+     * [apis => ['role' => -1]]
      *
      * ```
-     * user:GET|POST,api1:method,api2:method...
+     *  [
+     *      'session' => 3,
+     *      'role' => -1,
+     *  ]
      * ```
-     *
-     * @see self::METHOD_* for more
-     *
-     * @param $privileges
+     * @param string|array $urls
+     * @return array
      */
-    public function translateIntoAPIs($privileges)
+    public function urlsToPrivileges($urls)
     {
+
+        if (is_string($urls)) $urls = explode($this->delimiter, $urls);
+
+        $privileges = [];
+
+        $this->goThrough(function ($item) use (&$urls, &$privileges) {
+            if (isset($item['url'], $item['apis']) && in_array($item['url'], $urls)) {
+                foreach ($item['apis'] as $api => $methods) {
+                    $api = trim($api);
+                    $methods = (int)$methods;
+                    if (!isset($privileges[$api])) $privileges[$api] = 0;
+                    $privileges[$api] |= $methods;
+                }
+            }
+        });
+        return $privileges;
     }
+
+    protected function goThrough(callable $callback, $with = self::THROUGH_WITH_VALUE)
+    {
+        $this->menuIterator($this->menus, $callback, $with);
+    }
+
+    protected function menuIterator(array $menus, callable $callback, $with)
+    {
+        foreach ($menus as $key => $item) {
+            if (isset($item['children']) && is_array($item['children'])) $this->menuIterator($item['children'], $callback, $with);
+
+            $params = [];
+            if ($with & self::THROUGH_WITH_KEY) $params[] = $key;
+            if ($with & self::THROUGH_WITH_VALUE) $params[] = $item;
+
+            if (isset($item['url']) && false === call_user_func_array($callback, $params)) break;
+        }
+    }
+
+    public function translateMethod(string $method)
+    {
+        return (new \ReflectionClass(static::class))->getConstant("METHOD_$method");
+    }
+
+    /**
+     * Check if methods allowed contains current request method
+     * @param int $methodsAllowed
+     * @return bool
+     */
+    public function authenticated($methodsAllowed)
+    {
+        $methodsAllowed = (int)$methodsAllowed;
+        if (!$methodsAllowed) return false;
+
+        if (false === $current = $this->translateMethod($_SERVER['REQUEST_METHOD'])) return false;
+
+        return boolval($methodsAllowed & $current);
+    }
+
 }

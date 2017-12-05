@@ -4,24 +4,11 @@ It provides access management based on URL, such as you can visit `user/logout` 
 
 ## Menus
 
-Menus are defined as a collection of URLs, it list all the APIs that need controlling as following:
+Menus are defined as a collection of URLs(for front end) and APIs(for api access management)
 
-```php
-<?php
+**see** `/src/privilege/menu.php` for example
 
-return [
-    ['label' => '用户管理', 'children' => [
-        ['label' => '用户列表', 'url' => 'user/index'],
-        ['label' => '用户权限', 'url' => 'user/privilege', 'children' => [
-            ['label' => '添加角色', 'url' => 'user/role'],
-            ['label' => '修改角色', 'url' => 'user/role'],
-        ]],
-    ]],
-];
-
-```
-
-and the definition above should to be render by frontend engineer as a tree
+and the definition should to be render by frontend engineer as a tree
 
 ```text
 - 用户管理
@@ -34,20 +21,60 @@ and the definition above should to be render by frontend engineer as a tree
 ### Basic Format
 
 ```
-['label' => 'text', 'url' => '', 'children' => []]
+['label' => 'text', 'url' => '', 'apis' => ['api' => METHOD],'children' => []]
 ```
 
 ### Properties
 
-- label
+- `label` _string_
 
     Text to show
 
-- uri
+- `url` _string_
 
-    Access URI, usually URL of API or route of web
+    URL for frontend, to display ,to access page
 
-- children
+- `apis` _array_
 
-    Children menus, which could have full structure as menus. This is the most complicated field overall. There can be arbitrary level of children.
+    An array defines APIs accessible bound to `url`, it contains two parts, `api name` and corresponding `method`
+    in form of
 
+    ```text
+    ['api' => METHODs]
+
+    ```
+    
+    - `api` _string_
+    
+        The api name
+    
+    - `methods` _integer_
+
+        Methods as integer to indicates HTTP method allowed for `api`
+        
+        This should be const from `fk\helpers\AclManager::METHOD_*`, and can be use `nor` for multiple methods applied on one `api`
+
+- `children` _array_
+
+    Children menus, which could have full structure as its parent. This is the most complicated field overall. There can be arbitrary level of children.
+
+
+## How to implement
+
+### 1. Configure the menu.php of yours
+
+Refer to [menu.php](./src/privilege/menu.php) for example
+
+### 2. Saving in database
+
+
+Saving in database the `urls` allowed for front end
+
+
+```php
+<?php
+
+/** @var array $menus */
+(new \fk\helpers\privilege\AclManager($menus))->
+```
+### 3. 
