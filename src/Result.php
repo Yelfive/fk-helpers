@@ -65,6 +65,12 @@ class ResultConfig
  * @method $this message(string $message) Set message
  * @method $this data(array | \stdClass $associated) Set data, which must be associated array
  * @method $this list(array $indexed)   Set list, which must be indexed array
+ *
+ * @property int $code
+ * @property string $message
+ * @property \stdClass|array $data
+ * @property array $list
+ * @property mixed $extend
  */
 class Result
 {
@@ -102,13 +108,41 @@ class Result
         $value = $arguments[0] ?? null;
         // `null` value is reserved for retrieving data only
         if ($value === null) {
-            return $this->response[$name];
+            return $this->response[$name] ?? null;
         } else if (!$this->ruleExits($name)) {
             $this->extend($name, $value);
         } else if ($this->validate([$name => $value])) {
             $this->response[$name] = $value;
         }
         return $this;
+    }
+
+    /**
+     * @param string $name
+     * @return mixed
+     */
+    public function __get($name)
+    {
+        return $this->response[$name] ?? null;
+    }
+
+    /**
+     * Dot syntax supported
+     * @param string $name
+     * @param null $defaultValue
+     * @return null
+     */
+    public function get($name, $defaultValue = null)
+    {
+        $parts = explode('.', $name);
+
+        $response = $this->response;
+
+        foreach ($parts as $part) {
+            if (!isset($response[$part])) return $defaultValue;
+            $response = $response[$part];
+        }
+        return $response;
     }
 
     protected function ruleExits($name)
@@ -235,10 +269,10 @@ class Result
         foreach ($source as $k => $v) $dst[$k] = $v;
     }
 
-    public function toJson(): string
+    public function toJson($options = JSON_UNESCAPED_UNICODE): string
     {
         $response = $this->toArray();
 
-        return json_encode($response, JSON_UNESCAPED_UNICODE);
+        return json_encode($response, $options);
     }
 }
