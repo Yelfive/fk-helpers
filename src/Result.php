@@ -84,12 +84,20 @@ class Result
 
     protected $defaultResponse = ['code' => StatusCode::SUCCESS_OK, 'extend' => []];
 
+    /**
+     * @var array contains all the response data
+     */
     protected $response;
 
     /**
      * @var ResultConfig
      */
     protected $config;
+
+    /**
+     * @var array Fields excluded from result array/json
+     */
+    protected $exclude;
 
     public function __construct()
     {
@@ -261,6 +269,8 @@ class Result
 
         $this->validate(['message' => $response['message'] ?? null]);
 
+        $response = array_diff_key($response, array_flip($this->exclude));
+
         return $response;
     }
 
@@ -274,5 +284,15 @@ class Result
         $response = $this->toArray();
 
         return json_encode($response, $options);
+    }
+
+    /**
+     * @param array $exclude
+     * @return $this
+     */
+    public function exclude(array $exclude)
+    {
+        $this->exclude = $exclude;
+        return $this;
     }
 }
