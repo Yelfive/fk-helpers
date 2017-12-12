@@ -23,4 +23,25 @@ class ArrayHelper
         }
         return $only;
     }
+
+    /**
+     * Get value from key with dot syntax
+     * @param array $data
+     * @param string $key
+     * @param mixed $defaultValue
+     * @return mixed
+     */
+    public static function get(array $data, string $key, $defaultValue = null)
+    {
+        if (array_key_exists($key, $data)) return $data[$key];
+
+        foreach (explode('.', $key) as $part) {
+            if (array_key_exists($part, $data)) {
+                $data = $data[$part];
+            } else {
+                return $defaultValue;
+            }
+        }
+        return $data;
+    }
 }
