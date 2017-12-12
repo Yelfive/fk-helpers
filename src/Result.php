@@ -115,7 +115,7 @@ class Result
     {
         $value = $arguments[0] ?? null;
         // `null` value is reserved for retrieving data only
-        if ($value === null) {
+        if (count($arguments) === 0) {
             return $this->response[$name] ?? null;
         } else if (!$this->ruleExits($name)) {
             $this->extend($name, $value);
