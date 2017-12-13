@@ -97,7 +97,7 @@ class Result
     /**
      * @var array Fields excluded from result array/json
      */
-    protected $exclude;
+    protected $exclude = [];
 
     public function __construct()
     {
@@ -269,7 +269,7 @@ class Result
 
         $this->validate(['message' => $response['message'] ?? null]);
 
-        $response = array_diff_key($response, array_flip($this->exclude));
+        if (is_array($this->exclude)) $response = array_diff_key($response, array_flip($this->exclude));
 
         return $response;
     }
