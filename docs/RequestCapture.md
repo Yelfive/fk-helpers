@@ -30,4 +30,23 @@ And then every thing is ready to go.
 
 ## FileWriter
 
-## DBWriter
+## DatabaseWriter
+
+```php
+<?php
+
+/**
+ * @var string $dsn
+ * @var string $user
+ * @var string $password
+ * @var string $table 
+ */
+$writer = new \fk\helpers\debug\DatabaseWriter($dsn, $user, $password, $table, function ($error) {
+    // Log the $error message
+    \Illuminate\Support\Facades\Log::error($error);
+});
+// Record the route
+$capture = new fk\helpers\debug\Capture($writer, true);
+$capture->write(['route' => $_SERVER['REQUEST_URI']]);
+
+```

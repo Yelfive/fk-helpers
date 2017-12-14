@@ -19,7 +19,7 @@ use fk\helpers\SingletonTrait;
  *  - persist
  *          An interface to save data permanently
  *
- * @method static static singleton(WriterInterface $writer = null, bool $debug = true)
+ * @method static static singleton(WriterInterface $writer = null, bool $debug = true) Parameter 1 is optional only when its initialized already, otherwise null will be returned
  */
 class Capture
 {
@@ -135,7 +135,7 @@ class Capture
                 $headers[substr($v, 0, $pos)] = substr($v, $pos + 1);
             }
         }
-        if ($headers) $this->write(['response_headers' => $headers]);
+        if ($headers) $this->write(['response_header' => $headers]);
     }
 
     protected function prepareQuery()
@@ -158,9 +158,13 @@ class Capture
         return $_SESSION ?? [];
     }
 
-    protected function write(array $data)
+    /**
+     * Record data for persisting purpose
+     * @param array $data
+     */
+    public function write(array $data)
     {
-        if (!$this->debug || !$this->writer) return null;
+        if (!$this->debug || !$this->writer) return;
 
         $this->writer->write($data);
     }

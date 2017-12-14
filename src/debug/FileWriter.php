@@ -15,7 +15,6 @@ use fk\helpers\Dumper;
  * ```
  * $writer = new \fk\helpers\debug\FileWriter($filename);
  * $capture = new Capture($writer, $debug)
- * $capture->response($someResponse);
  * ```
  */
 class FileWriter implements WriterInterface
@@ -128,13 +127,14 @@ EOF;
 |===========================================================
 |   <OTHERS>
 |===========================================================
-|
 
 EOF;
             foreach ($fields as $k => $v) {
                 if (!is_scalar($k)) continue;
+                $k = str_replace('_', ' ', ucwords($k, '_'));
                 $log .= "|   $k  : $v\n";
             }
+            $log = rtrim($log, "\n");
         }
         return $log;
     }
