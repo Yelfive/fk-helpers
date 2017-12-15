@@ -7,26 +7,23 @@
 
 namespace fk\helpers\debug;
 
+use fk\helpers\SingletonTrait;
+
 /**
- * Class DebugRequestCapture
- * @package fk\helpers
+ * Capture for the user interfaces
  *
- * @method static $this add(array $data)
- * @method static $this softAdd(array $data)
+ * Writer for two things: record and write
  *
- * @method $this header(array | callable $headers)
- * @method $this query(array | callable $queryParams)
- * @method $this form(array | callable $formData)
- * @method $this session(array | callable $session)
- * @method $this file(array | callable $files)
+ *  - write
+ *          An interface to cache data
+ *  - persist
+ *          An interface to save data permanently
+ *
+ * @method static static singleton(WriterInterface $writer = null, bool $debug = true) Parameter 1 is optional only when its initialized already, otherwise null will be returned
  */
 class Capture
 {
-
-    /**
-     * @var string
-     */
-    protected $startWith;
+    use SingletonTrait;
 
     /**
      * Whether application is in debug mode
@@ -35,95 +32,89 @@ class Capture
     protected $debug;
 
     /**
-     * @var static
-     */
-    protected static $instance;
-
-    /**
      * @var WriterInterface
      */
     protected $writer;
 
     /**
-     * @var array
+     * @var array Variables to be saved when requested
      */
-    protected $request = [];
+    protected $requestLogVars = ['request_header', 'query', 'form', 'session', 'file'];
 
     /**
-     * @var array
+     * @var array Variables to be saved when terminating, after response sent
      */
-    protected $soft = [];
+    protected $responseLogVars = ['response_header', 'response_body', 'response_session'];
 
-    protected $logVars = ['header', 'query', 'form', 'session', 'file'];
+    /**
+     * @var string Output buffer, to store ob for persistence
+     * @see shutdown
+     * @see prepareResponseBody
+     */
+    protected $outputBuffer;
 
+    /**
+     * Capture constructor.
+     * @param WriterInterface $writer
+     * @param bool $debug False to disable capture
+     */
     public function __construct(WriterInterface $writer, bool $debug = true)
     {
-        if (!$debug) return;
+        if (false === $this->debug = $debug) return;
 
         $this->debug = $debug;
-        static::$instance = $this;
         $this->writer = $writer;
+        ob_start(function ($buffer) {
+            return $this->outputBuffer = $buffer;
+        });
+        $this->capture($this->requestLogVars);
+        register_shutdown_function(function () {
+            $this->shutdown();
+        });
     }
 
-    public function overwriteRequest($request)
+    protected function shutdown()
     {
-        $this->request = $request;
+        // finish request will clear all output buffer
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+
+        $this->capture($this->responseLogVars);
+        $this->writer->persist();
     }
 
-    public function __call($name, $arguments)
+    protected function capture($logVars)
     {
-        if (in_array($name, $this->logVars)) {
-            $value = $arguments[0];
-            $this->request[$name] = is_callable($value) ? $this->call($value) : $value;
-            return $this;
-        } else if (method_exists($this, "_$name")) {
-            $method = "_$name";
-            $this->$method($arguments[0]);
-            return $this;
-        }
-        throw new \Exception("Calling undefined method $name of " . __CLASS__);
-    }
-
-    /**
-     * Allow static call for methods inside this class
-     * @param string $name
-     * @param array $arguments
-     * @return $this|null
-     */
-    public static function __callStatic($name, $arguments)
-    {
-        if (!static::$instance || !static::$instance->debug) return null;
-        $method = "_$name";
-        return static::$instance->__call($method, $arguments);
-    }
-
-    protected function call($callback)
-    {
-        return is_callable($callback) ? call_user_func($callback) : $callback;
-    }
-
-    public function capture()
-    {
-        foreach ($this->logVars as $var) {
-            if (!isset($this->request[$var])) {
-                $method = "prepare" . ucfirst($var);
+        $request = [];
+        foreach ($logVars as $var) {
+            if (!isset($request[$var])) {
+                $method = "prepare" . str_replace('_', '', ucwords($var, '_'));
                 if (method_exists($this, $method)) {
-                    $this->request[$var] = $this->$method();
+                    $request[$var] = $this->$method();
                 } else if (isset($GLOBALS[$var])) {
-                    $this->request[$var] = $GLOBALS[$var];
+                    $request[$var] = $GLOBALS[$var];
                 }
             }
         }
 
         // Capture only the non-empty elements
-        $request = array_filter($this->request, function ($v) {
+        $request = array_filter($request, function ($v) {
             return !empty($v);
         });
 
         $this->write($request);
     }
 
-    protected function prepareHeader()
+    protected function prepareResponseBody()
+    {
+        return $this->outputBuffer;
+    }
+
+    protected function prepareResponseSession()
+    {
+        return $_SESSION ?? [];
+    }
+
+    protected function prepareRequestHeader()
     {
         $headers = [];
         foreach ($_SERVER as $k => $v) {
@@ -134,6 +125,17 @@ class Capture
             }
         }
         return $headers;
+    }
+
+    protected function prepareResponseHeader()
+    {
+        $headers = [];
+        foreach (headers_list() as $v) {
+            if (false !== $pos = strpos($v, ':')) {
+                $headers[substr($v, 0, $pos)] = substr($v, $pos + 1);
+            }
+        }
+        if ($headers) $this->write(['response_header' => $headers]);
     }
 
     protected function prepareQuery()
@@ -157,25 +159,13 @@ class Capture
     }
 
     /**
-     * Add capture log
-     * @param mixed $data
+     * Record data for persisting purpose
+     * @param array $data
      */
-    protected function _add(array $data)
+    public function write(array $data)
     {
-        $this->write($data);
-    }
+        if (!$this->debug || !$this->writer) return;
 
-    protected function _softAdd(array $data)
-    {
-        $this->soft = array_merge($this->soft, $data);
-    }
-
-    protected function write($data)
-    {
-        if (!$this->debug || !$this->writer) return null;
-
-        $data = array_merge($this->soft, $data);
-        $this->soft = [];
         $this->writer->write($data);
     }
 }
