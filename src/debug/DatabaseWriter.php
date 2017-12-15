@@ -7,6 +7,8 @@
 
 namespace fk\helpers\debug;
 
+use fk\helpers\Dumper;
+
 class DatabaseWriter implements WriterInterface
 {
     protected $attributes = [];
@@ -100,11 +102,9 @@ class DatabaseWriter implements WriterInterface
      */
     protected function execute(string $sql, array $bindings = [])
     {
-        $pdo = new \PDO($this->dsn, $this->username, $this->password);
-        if ($pdo->errorCode()) {
-            return $this->error($pdo);
-        }
-        $pdo->exec('SET NAMES utf8mb4');
+        $pdo = $this->getPdo();
+        if (0 != $pdo->errorCode()) return $this->error($pdo);
+
         $stmt = $pdo->prepare($sql);
         if (false === $stmt) {
             $this->error($pdo);
@@ -118,19 +118,44 @@ class DatabaseWriter implements WriterInterface
     }
 
     /**
-     * @param \PDO|\PDOStatement $obj
+     * @param bool $final
+     * @return null|\PDO
+     */
+    protected function getPdo($final = false)
+    {
+        static $pdo;
+        if (!$pdo) $pdo = new \PDO($this->dsn, $this->username, $this->password);
+        try {
+            // In case `MySQL has gone away`
+            $pdo->exec('SET NAMES utf8mb4');
+        } catch (\PDOException $e) {
+            if ($final) {
+                $this->error($e);
+            } else {
+                $pdo = null;
+                return $this->getPdo(true);
+            }
+        }
+        return $pdo;
+    }
+
+    /**
+     * @param \PDO|\PDOStatement|string $obj
      * @throws \Exception
      */
     protected function error($obj)
     {
         if (!is_callable($this->errorHandler)) return;
-        //SQLSTATE
-        list ($code, $driverCode, $message) = $obj->errorInfo();
-        $error = "SQLSTATE[$code]: $message.";
-        if ($obj instanceof \PDOStatement) {
-            $error .= " SQL: $obj->queryString";
+        if (is_object($obj)) {
+            //SQLSTATE
+            list ($code, $driverCode, $message) = $obj->errorInfo();
+            $error = "SQLSTATE[$code]: $message.";
+            if ($obj instanceof \PDOStatement) $error .= " SQL: $obj->queryString";
+        } else {
+            $error = $obj;
         }
-        call_user_func($this->errorHandler, $error);
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+        call_user_func($this->errorHandler, $error . "\n" . Dumper::dump($trace));
     }
 
     protected function writeExtraAttributes()
