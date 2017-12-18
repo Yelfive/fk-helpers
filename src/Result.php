@@ -130,7 +130,7 @@ class Result
      */
     public function __get($name)
     {
-        if (key_exists($name, $this->response[$name])) {
+        if (key_exists($name, $this->response)) {
             return $this->response[$name];
         } else if (key_exists($name, $this->defaultResponse)) {
             return $this->defaultResponse[$name];
