@@ -170,6 +170,12 @@ class Result
      */
     public function extend($name = null, $value = null)
     {
+        if ($name === null) {
+            return $this->response['extend'] ?? [];
+        }
+
+        if (!isset($this->response['extend'])) $this->response['extend'] = [];
+
         if (is_array($name)) {
             $this->merge($this->response['extend'], $name);
         } else {
