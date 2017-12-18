@@ -102,7 +102,6 @@ class Result
     public function __construct()
     {
         $this->config = new ResultConfig();
-        if (!static::$validator) static::$validator = new Validator($this->config->getRules());
         $this->clear();
     }
 
@@ -200,7 +199,7 @@ class Result
     public function clear(string $name = null)
     {
         if ($name === null) {
-            $this->response = $this->defaultResponse;
+            $this->response = [];
         } else {
             unset($this->response[$name]);
         }
@@ -209,27 +208,27 @@ class Result
 
     /**
      * @param array $data
-     * @return bool
+     * @return true Otherwise exception will be raised
      * @throws Exception
      */
     protected function validate(array $data)
     {
-        if (static::$validator->validate($data)) return true;
+        $validator = new Validator($this->config->getRules());
 
-        $error = static::$validator->error();
-        $this->exception($error);
+        return $validator->validate($data) ?: $this->exception($validator->error());
     }
 
     /**
      * @param string $error
      * @throws Exception
+     * @return null
      */
     protected function exception(string $error)
     {
         $traces = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
         $caller = $traces[2] ?? [];
-        $message = "Invalid response with error: $error\n";
-        if ($caller) $message .= $this->bolder("Check this out\n") . "#0 " . $this->red($caller['file']) . " on line " . $this->red($caller['line']);
+        $message = "Invalid response with error: $error.";
+        if ($caller) $message .= $this->bolder(" Check this out: ") . $this->red($caller['file']) . " on line " . $this->red($caller['line']);
         throw new Exception($message);
     }
 
@@ -253,12 +252,12 @@ class Result
 
     public function hasResponse()
     {
-        return isset($this->response['message']);
+        return !empty($this->response);
     }
 
     public function toArray(): array
     {
-        $response = $this->response;
+        $response = array_merge($this->defaultResponse, $this->response);
 
         $extend = $response['extend'];
         unset($response['extend']);
