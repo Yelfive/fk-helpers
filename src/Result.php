@@ -130,7 +130,13 @@ class Result
      */
     public function __get($name)
     {
-        return $this->response[$name] ?? null;
+        if (key_exists($name, $this->response[$name])) {
+            return $this->response[$name];
+        } else if (key_exists($name, $this->defaultResponse)) {
+            return $this->defaultResponse[$name];
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -141,15 +147,13 @@ class Result
      */
     public function get($name, $defaultValue = null)
     {
-        $parts = explode('.', $name);
-
-        $response = $this->response;
-
-        foreach ($parts as $part) {
-            if (!isset($response[$part])) return $defaultValue;
-            $response = $response[$part];
+        if (null !== $value = ArrayHelper::get($this->response, $name)) {
+            return $value;
+        } else if (null !== $value = ArrayHelper::get($this->defaultResponse, $name)) {
+            return $value;
+        } else {
+            return $defaultValue;
         }
-        return $response;
     }
 
     protected function ruleExits($name)
@@ -159,7 +163,7 @@ class Result
 
     /**
      * Add data to response, with its `$name` as key
-     * @param string|array|null $name
+     * @param string|array $name
      * * string - `$value` must not be null <br>
      * * array  - `$value` will be ignored <br>
      * * null   -  It will be taken as retrieving<br>
@@ -168,12 +172,8 @@ class Result
      * @return $this
      * @throws Exception
      */
-    public function extend($name = null, $value = null)
+    public function extend($name, $value = null)
     {
-        if ($name === null) {
-            return $this->response['extend'] ?? [];
-        }
-
         if (!isset($this->response['extend'])) $this->response['extend'] = [];
 
         if (is_array($name)) {
