@@ -8,6 +8,7 @@
 namespace fk\helpers\debug;
 
 use fk\helpers\SingletonTrait;
+use fk\http\StatusCode;
 
 /**
  * Capture for the user interfaces
@@ -39,12 +40,12 @@ class Capture
     /**
      * @var array Variables to be saved when requested
      */
-    protected $requestLogVars = ['request_header', 'query', 'form', 'session', 'file'];
+    protected $requestLogVars = ['request_header', 'query', 'session', 'file'];
 
     /**
      * @var array Variables to be saved when terminating, after response sent
      */
-    protected $responseLogVars = ['response_header', 'response_body', 'response_session'];
+    protected $responseLogVars = ['form', 'response_status', 'response_header', 'response_body', 'response_session'];
 
     /**
      * @var string Output buffer, to store ob for persistence
@@ -127,6 +128,18 @@ class Capture
         return $headers;
     }
 
+    protected function prepareResponseStatus()
+    {
+        $code = http_response_code();
+        $rc = new \ReflectionClass(StatusCode::class);
+        foreach ($rc->getConstants() as $key => $value) {
+            if ($value == $code) {
+                return $code . ' ' . str_replace('_', ' ', ucwords(strtolower($key), '_'));
+            }
+        }
+        return $code;
+    }
+
     protected function prepareResponseHeader()
     {
         $headers = [];
@@ -135,7 +148,7 @@ class Capture
                 $headers[substr($v, 0, $pos)] = substr($v, $pos + 1);
             }
         }
-        if ($headers) $this->write(['response_header' => $headers]);
+        return $headers;
     }
 
     protected function prepareQuery()
