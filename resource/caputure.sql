@@ -17,6 +17,7 @@ CREATE TABLE `request_capture_log` (
   `request_session` text COMMENT '$_SESSION',
   `response_session` text COMMENT '$_SESSION',
   `file` text COMMENT '$_FILES',
+  `response_status` VARCHAR(100) DEFAULT  '',
   `response_header` text COMMENT 'Headers sent',
   `response_body` text COMMENT 'HTTP entity body send from server',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
