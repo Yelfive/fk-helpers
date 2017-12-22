@@ -140,7 +140,7 @@ class AclManager
         return $privileges;
     }
 
-    protected function goThrough(callable $callback, $with = self::THROUGH_WITH_VALUE)
+    public function goThrough(callable $callback, $with = self::THROUGH_WITH_VALUE)
     {
         $this->menuIterator($this->menus, $callback, $with);
     }
@@ -158,7 +158,7 @@ class AclManager
         }
     }
 
-    public function translateMethod(string $method)
+    public static function translateMethod(string $method)
     {
         return (new \ReflectionClass(static::class))->getConstant("METHOD_$method");
     }
@@ -173,9 +173,47 @@ class AclManager
         $methodsAllowed = (int)$methodsAllowed;
         if (!$methodsAllowed) return false;
 
-        if (false === $current = $this->translateMethod($_SERVER['REQUEST_METHOD'])) return false;
+        if (false === $current = static::translateMethod($_SERVER['REQUEST_METHOD'])) return false;
 
         return boolval($methodsAllowed & $current);
+    }
+
+    /**
+     * Translate the method code human readable string. i.e [GET, POST]
+     * @param int $methodCodes
+     * @return array
+     */
+    public static function readMethods($methodCodes): array
+    {
+        /**
+         * @var array $methods
+         *  [
+         *      [4] => POST
+         *  ]
+         */
+        $methods = array_map(
+            function ($v) {
+                return substr($v, 7);
+            },
+            array_flip(
+                array_filter(
+                    (new \ReflectionClass(static::class))->getConstants(),
+                    function ($k) {
+                        return strncmp($k, 'METHOD_', 7) === 0;
+                    }, ARRAY_FILTER_USE_KEY)
+            )
+        );
+
+        $readable = [];
+        if ($methodCodes == -1) {
+            $readable[] = $methods[$methodCodes];
+        } else {
+            for ($code = 1; $code <= $methodCodes; $code <<= 1) {
+                if ($code & $methodCodes) $readable[] = $methods[$code];
+            }
+        }
+
+        return $readable;
     }
 
 }
