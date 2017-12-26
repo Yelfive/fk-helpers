@@ -37,8 +37,9 @@ class DatabaseWriter implements WriterInterface
     {
         $rc = new \ReflectionClass(static::class);
         $parameters = $rc->getConstructor()->getParameters();
-        foreach ($parameters as $k => $parameter) {
-            $this->{$parameter->getName()} = func_get_arg($k);
+
+        foreach (func_get_args() as $k => $v) {
+            $this->{$parameters[$k]->getName()} = $v;
         }
 
         $this->write(['created_at' => date('Y-m-d H:i:s')]);
