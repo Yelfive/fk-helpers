@@ -91,8 +91,12 @@ class ArrayHelper
             if (is_array($v)) {
                 $xml .= "<$tag>" . static::iterateXMLElements($v) . "</$tag>";
             } else {
-                $fragments = explode(']]>', $v);
-                $value = '<![CDATA[' . implode(']]]]><![CDATA[>', $fragments) . ']]>';
+                if (false !== strpos($v, ']]>') || false !== strpos($v, '<')) {
+                    $fragments = explode(']]>', $v);
+                    $value = '<![CDATA[' . implode(']]]]><![CDATA[>', $fragments) . ']]>';
+                } else {
+                    $value = $v;
+                }
 
                 $xml .= "<$tag>$value</$tag>";
             }
