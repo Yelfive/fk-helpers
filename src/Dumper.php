@@ -72,4 +72,8 @@ class Dumper
             return $input;
         }
     }
+
+    public static function asJson($data, $tab_length = 0)
+    {
+    }
 }

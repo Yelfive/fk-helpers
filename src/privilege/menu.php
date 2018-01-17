@@ -11,10 +11,6 @@
 use fk\helpers\privilege\AclManager as ACL;
 
 return [
-    ['label' => '基本操作', 'children' => [
-        ['label' => '管理员登陆', 'url' => 'account.signin', 'api' => 'session', 'methods' => ACL::METHOD_POST],
-        ['label' => '注销登陆', 'url' => 'account.signout', 'api' => 'session', 'methods' => ACL::METHOD_DELETE],
-    ]],
     ['label' => '油站管理', 'children' => [
         ['label' => '合作单位', 'url' => 'l.station_unit', 'api' => 'company', 'methods' => ACL::METHOD_ALL],
         ['label' => '信息管理', 'children' => [

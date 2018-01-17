@@ -104,4 +104,26 @@ class ArrayHelper
         return $xml;
     }
 
+    /**
+     * If the number is 1, an item of `$data` will be returned,
+     * otherwise an array of items in `$data` will be returned
+     * @param array $data
+     * @param int $number
+     * @return mixed
+     */
+    public static function random(array $data, $number = 1)
+    {
+        if ($number == 1) {
+            return $data[array_rand($data, 1)];
+        } else if ($number > 1) {
+            $keys = array_rand($data, $number);
+            $result = [];
+            foreach ($keys as $key) $result[] = $data[$key];
+
+            return $result;
+        } else {
+            return null;
+        }
+    }
+
 }
