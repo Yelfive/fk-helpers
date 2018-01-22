@@ -25,6 +25,18 @@ class ArrayHelper
     }
 
     /**
+     * Rule out the given keys
+     * @param array $data
+     * @param array $keys
+     * @return array
+     */
+    public static function except(array $data, array $keys)
+    {
+        foreach ($keys as $key) unset($data[$key]);
+        return $data;
+    }
+
+    /**
      * Get value from key with dot syntax
      * @param array $data
      * @param string $key
