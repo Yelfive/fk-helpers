@@ -11,11 +11,23 @@ class Str
 {
     /**
      * Clear any invisible character
-     * @param $input
-     * @return mixed
+     * @param string $input
+     * @return string
      */
     public static function purify($input)
     {
         return preg_replace('/\s/', '', $input);
+    }
+
+    /**
+     * Change from snake case(`hello_world`) into cammel case (`helloWorld)
+     * @param string $input
+     * @return string
+     */
+    public static function toCammelCase($input)
+    {
+        return preg_replace_callback('/_[a-zA-Z]/', function ($v) {
+            return ucfirst(substr($v[0], 1));
+        }, $input);
     }
 }
