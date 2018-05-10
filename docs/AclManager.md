@@ -40,8 +40,7 @@ and the definition should to be render by frontend engineer as a tree
     in form of
 
     ```text
-    ['api' => METHODs]
-
+    ['api' => METHOD(s)]
     ```
     
     - `api` _string_
