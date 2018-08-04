@@ -20,7 +20,7 @@ class Str
     }
 
     /**
-     * Change from snake case(`hello_world`) into cammel case (`helloWorld)
+     * Change from snake case(`hello_world`) into camel case (`helloWorld`)
      * @param string $input snake_cased string
      * @return string CamelCased String
      * @deprecated Typo
@@ -33,7 +33,7 @@ class Str
     }
 
     /**
-     * Change from snake case(`hello_world`) into cammel case (`helloWorld)
+     * Change from snake case(`hello_world`) into camel case (`helloWorld`)
      * @param string $input snake_cased string
      * @return string CamelCased String
      */
