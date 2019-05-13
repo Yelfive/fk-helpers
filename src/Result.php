@@ -35,7 +35,7 @@ class ResultConfig
     protected function _debug(bool $debug = true)
     {
         $this->debug = $debug;
-        if ($this->debug = $debug) {
+        if (!$this->debug) {
             $this->rules['list'] = ['array'];
             $this->rules['data'] = ['array'];
         }
