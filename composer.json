@@ -2,7 +2,8 @@
   "name": "fk/helpers",
   "description": "Common helpers for php",
   "requires": {
-    "php": ">=7.0"
+    "php": ">=7.0",
+    "fk/http-status": "^2.0"
   },
   "autoload": {
     "psr-4": {

@@ -35,6 +35,7 @@ class Dumper
         if (is_scalar($input) || is_null($input)) {
             return static::wrapScalar($input);
         } else if (is_array($input)) {
+            if (!$input) return '[]';
             $string = '';
 
             $space = $inline ? ' ' : "\n" . str_repeat(' ', $depth * 4);
@@ -70,5 +71,9 @@ class Dumper
         } else if (is_int($input)) {
             return $input;
         }
+    }
+
+    public static function asJson($data, $tab_length = 0)
+    {
     }
 }

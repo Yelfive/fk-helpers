@@ -16,6 +16,13 @@ use Exception;
 class Validator
 {
 
+    /**
+     *  [
+     *      'field' => 'required',
+     *      'field' => callable,
+     *  ]
+     * @var array
+     */
     protected $rules;
 
     private $error;
@@ -47,12 +54,17 @@ class Validator
         $this->error = '';
         foreach ($data as $k => $v) {
             foreach ($this->rules[$k] ?? [] as $rule) {
-                $args = explode(':', $rule);
-                $rule = array_shift($args);
-                $method = 'check' . ucfirst($rule);
-                if (!method_exists($this, $method)) {
-                    throw new Exception("Rule not exists: $rule");
-                } else if (false === $this->$method($v, ...$args)) {
+                if (is_callable($rule)) {
+                    $validator = $rule;
+                    $args = [];
+                } else {
+                    $args = explode(':', $rule);
+                    $rule = array_shift($args);
+                    $method = 'check' . ucfirst($rule);
+                    if (!method_exists($this, $method)) throw new Exception("Rule not exists: $rule");
+                    $validator = [$this, $method];
+                }
+                if (false === call_user_func($validator, $v, ...$args)) {
                     $replaces = [
                         '{name}' => $k,
                         '{type}' => gettype($v),

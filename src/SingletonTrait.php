@@ -9,6 +9,9 @@ namespace fk\helpers;
 
 trait SingletonTrait
 {
+    /**
+     * @var static
+     */
     protected static $_instance;
 
     /**
