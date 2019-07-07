@@ -148,7 +148,7 @@ class Capture
 
     protected function prepareFile()
     {
-        return $_FILES;
+        return $_FILES ?: file_get_contents('php://input');
     }
 
     protected function prepareSession()
