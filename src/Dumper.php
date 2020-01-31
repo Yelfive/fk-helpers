@@ -52,6 +52,8 @@ class Dumper
 
             $chars = $inline ? ', ' : ',';
             return '[' . ltrim($string, $chars) . ($inline ? '' : ',') . substr($space, 0, -4) . ']';
+        } else if ($input instanceof DumperExpression) {
+            return $input->expression;
         } else if (is_object($input)) {
             return '<object ' . get_class($input) . '>';
         }
