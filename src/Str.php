@@ -37,9 +37,10 @@ class Str
      * @param string $input snake_cased string
      * @return string CamelCased String
      */
-    public static function toCamelCase($input)
+    public static function toCamelCase($input, $delimiter = '_')
     {
-        return preg_replace_callback('/_[a-zA-Z]/', function ($v) {
+        $delimiter = preg_quote($delimiter);
+        return preg_replace_callback("/{$delimiter}[a-zA-Z]/", function ($v) {
             return ucfirst(substr($v[0], 1));
         }, $input);
     }

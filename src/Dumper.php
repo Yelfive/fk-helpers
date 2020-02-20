@@ -62,20 +62,22 @@ class Dumper
 
     public static function wrapScalar($input)
     {
-        if (is_numeric($input)) {
-            return $input;
-        } else if (is_string($input)) {
-            return "'$input'";
-        } else if (is_null($input)) {
-            return 'null';
-        } else if (is_bool($input)) {
-            return $input ? 'true' : 'false';
-        } else if (is_int($input)) {
-            return $input;
-        }
+        if (is_scalar($input) || is_null($input)) return var_export($input, true);
+        // if (is_numeric($input)) {
+        //     return $input;
+        // } else if (is_string($input)) {
+        //     return var_export($input);
+        // } else if (is_null($input)) {
+        //     return 'null';
+        // } else if (is_bool($input)) {
+        //     return $input ? 'true' : 'false';
+        // } else if (is_int($input)) {
+        //     return $input;
+        // }
     }
 
     public static function asJson($data, $tab_length = 0)
     {
+        return json_encode($data, JSON_UNESCAPED_UNICODE);
     }
 }
