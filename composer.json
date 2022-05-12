@@ -1,7 +1,7 @@
 {
   "name": "fk/helpers",
   "description": "Common helpers for php",
-  "requires": {
+  "require": {
     "php": ">=7.0",
     "fk/http-status": "^2.0"
   },
